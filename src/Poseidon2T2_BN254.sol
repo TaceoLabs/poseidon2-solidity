@@ -6,13 +6,32 @@ pragma solidity >=0.8.8;
 library Poseidon2T2_BN254 {
     uint256 constant PRIME = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001;
 
+    /// @notice Provided input is not in the BN254 scalar field.
+    error NotInPrimefield();
+
     /// @notice Poseidon2 compression function.
     /// @dev Adds `domainSep` to the first input, runs the permutation, then feeds
-    /// the original first input forward into the result.
+    /// the original first input forward into the result. Reverts with {NotInPrimefield}
+    /// if any input is >= the BN254 scalar field prime.
     /// @param inputs The two-element input state to compress.
     /// @param domainSep Domain separator added to `inputs[0]` before permutation.
     /// @return The compressed output, reduced modulo the BN254 scalar field prime.
     function compress(uint256[2] calldata inputs, uint256 domainSep) external pure returns (uint256) {
+        if (inputs[0] >= PRIME || inputs[1] >= PRIME) revert NotInPrimefield();
+        return _compress(inputs, domainSep);
+    }
+
+    /// @notice {compress} without the prime-field input check.
+    /// @dev Caller MUST ensure every input is already reduced modulo the BN254 scalar
+    /// field prime; unreduced inputs yield an undefined (non-canonical) result.
+    /// @param inputs The two-element input state to compress.
+    /// @param domainSep Domain separator added to `inputs[0]` before permutation.
+    /// @return The compressed output, reduced modulo the BN254 scalar field prime.
+    function compressUnchecked(uint256[2] calldata inputs, uint256 domainSep) external pure returns (uint256) {
+        return _compress(inputs, domainSep);
+    }
+
+    function _compress(uint256[2] calldata inputs, uint256 domainSep) internal pure returns (uint256) {
         // Add the domain separator
         uint256[2] memory state = _perm([addmod(inputs[0], domainSep, PRIME), inputs[1]]);
         // feed forward
@@ -20,9 +39,20 @@ library Poseidon2T2_BN254 {
     }
 
     /// @notice Raw Poseidon2 permutation over the full BN254 state.
+    /// @dev Reverts with {NotInPrimefield} if any element is >= the BN254 scalar field prime.
     /// @param state The two-element state to permute.
     /// @return The permuted state.
     function permutation(uint256[2] memory state) external pure returns (uint256[2] memory) {
+        if (state[0] >= PRIME || state[1] >= PRIME) revert NotInPrimefield();
+        return _perm(state);
+    }
+
+    /// @notice {permutation} without the prime-field input check.
+    /// @dev Caller MUST ensure every element is already reduced modulo the BN254 scalar
+    /// field prime; unreduced inputs yield an undefined (non-canonical) result.
+    /// @param state The two-element state to permute.
+    /// @return The permuted state.
+    function permutationUnchecked(uint256[2] memory state) external pure returns (uint256[2] memory) {
         return _perm(state);
     }
 
@@ -30,9 +60,11 @@ library Poseidon2T2_BN254 {
     /// their bound would otherwise grow past 5 * PRIME. Every unchecked addition below
     /// keeps its result at most 5 * PRIME < 2^256 (~5.29 * PRIME), so no addition can
     /// wrap. Any change to the reduction points must re-establish this bound.
+    /// Precondition: `state[0]` and `state[1]` must already be < PRIME; the bound above
+    /// depends on it.
     function _perm(uint256[2] memory state) internal pure returns (uint256[2] memory) {
-        uint256 l = state[0] % PRIME;
-        uint256 r = state[1] % PRIME;
+        uint256 l = state[0];
+        uint256 r = state[1];
         unchecked {
             uint256 s = l + r;
             l += s;

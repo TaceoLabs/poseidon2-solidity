@@ -8,6 +8,7 @@ import {Poseidon2T2_BN254} from "../src/Poseidon2T2_BN254.sol";
 // Reference vectors: https://github.com/TaceoLabs/noir-poseidon/blob/main/poseidon2/src/bn254/permutation.nr
 contract Poseidon2T2_BN254_KAT_Test is Test {
     uint256 constant DOMAIN_SEP = 0xc0ffee;
+    uint256 constant PRIME = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001;
 
     function _check(uint256[2] memory input, uint256[2] memory expected) internal pure {
         uint256[2] memory got = Poseidon2T2_BN254.permutation(input);
@@ -280,5 +281,47 @@ contract Poseidon2T2_BN254_KAT_Test is Test {
             ],
             5982104816448172910671653504197735584234623875188538513874952814368499821309
         );
+    }
+
+    function test_compress_reverts_when_input_not_in_field() public {
+        vm.expectRevert(Poseidon2T2_BN254.NotInPrimefield.selector);
+        Poseidon2T2_BN254.compress([PRIME, uint256(0)], 0);
+
+        vm.expectRevert(Poseidon2T2_BN254.NotInPrimefield.selector);
+        Poseidon2T2_BN254.compress([uint256(0), PRIME], 0);
+
+        // Boundary: PRIME - 1 is in-field and must not revert.
+        Poseidon2T2_BN254.compress([PRIME - 1, PRIME - 1], 0);
+    }
+
+    function test_permutation_reverts_when_input_not_in_field() public {
+        vm.expectRevert(Poseidon2T2_BN254.NotInPrimefield.selector);
+        Poseidon2T2_BN254.permutation([PRIME, uint256(0)]);
+
+        vm.expectRevert(Poseidon2T2_BN254.NotInPrimefield.selector);
+        Poseidon2T2_BN254.permutation([uint256(0), PRIME]);
+
+        // Boundary: PRIME - 1 is in-field and must not revert.
+        Poseidon2T2_BN254.permutation([PRIME - 1, PRIME - 1]);
+    }
+
+    function test_unchecked_variants_match_kats() public pure {
+        uint256[2] memory input1 = [
+            20457494674368011577698787033167541464070895955057742021881406527394550967066,
+            21444671219328533920402987889514525745813105369108346788316711824094480574542
+        ];
+        assertEq(
+            Poseidon2T2_BN254.compressUnchecked(input1, 0),
+            2832391002711650597078084662530627544976903336819888740235684339967297026936
+        );
+        assertEq(
+            Poseidon2T2_BN254.compressUnchecked(input1, DOMAIN_SEP),
+            12352101646283403677051591425892096150691658025543407184640858327529180050910
+        );
+
+        uint256[2] memory permInput = [uint256(0), 1];
+        uint256[2] memory permGot = Poseidon2T2_BN254.permutationUnchecked(permInput);
+        assertEq(permGot[0], 0x1d01e56f49579cec72319e145f06f6177f6c5253206e78c2689781452a31878b);
+        assertEq(permGot[1], 0x0d189ec589c41b8cffa88cfc523618a055abe8192c70f75aa72fc514560f6c61);
     }
 }

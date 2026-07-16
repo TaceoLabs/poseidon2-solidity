@@ -4,4 +4,7 @@
 .soldeerignore
 CHANGELOG.md
 cliff.toml
+fuzzy_tests
+README.md
 soljson-latest.js
+test/

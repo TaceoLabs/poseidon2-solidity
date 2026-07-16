@@ -1,0 +1,7 @@
+.git/
+.github/
+.gitignore
+.soldeerignore
+CHANGELOG.md
+cliff.toml
+soljson-latest.js

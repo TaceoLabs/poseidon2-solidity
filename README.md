@@ -14,13 +14,13 @@ forge install TaceoLabs/poseidon2-solidity
 Using [Soldeer](https://soldeer.xyz):
 
 ```bash
-forge soldeer install poseidon2-solidity~1.0.0
+forge soldeer install poseidon2-solidity~0.1.0
 ```
 
 Or add it to your `foundry.toml`:
 ```toml
 [dependencies]
-poseidon2-solidity = "1.0.0"
+poseidon2-solidity = "0.1.0"
 ```
 
 ## Usage
@@ -39,7 +39,7 @@ Add one of the following to your `remappings.txt`, depending on how you installe
 @taceo/poseidon2/=lib/poseidon2-solidity/src/
 
 # Soldeer
-@taceo/poseidon2/=dependencies/poseidon2-solidity-1.0.0/src/
+@taceo/poseidon2/=dependencies/poseidon2-solidity-0.1.0/src/
 ```
 
 ## Security

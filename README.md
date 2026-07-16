@@ -36,10 +36,10 @@ uint256 h3 = Poseidon2T3_BN254.compress([a, b, c], domainSep);
 Add one of the following to your `remappings.txt`, depending on how you installed the library:
 ```
 # forge install
-@taceo/poseidon2/=lib/poseidon2-solidity/src/
+@taceo/poseidon2/=lib/poseidon2/src/
 
 # Soldeer
-@taceo/poseidon2/=dependencies/poseidon2-solidity-0.1.0/src/
+@taceo/poseidon2/=dependencies/poseidon2-0.1.0/src/
 ```
 
 ## Security

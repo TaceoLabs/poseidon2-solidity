@@ -10,30 +10,26 @@ library Poseidon2T2_BN254 {
     error NotInPrimefield();
 
     /// @notice Poseidon2 compression function.
-    /// @dev Adds `domainSep` to the first input, runs the permutation, then feeds
-    /// the original first input forward into the result. Reverts with {NotInPrimefield}
-    /// if any input is >= the BN254 scalar field prime.
+    /// @dev Runs the permutation, then feeds the original first input forward into the
+    /// result. Reverts with {NotInPrimefield} if any input is >= the BN254 scalar field prime.
     /// @param inputs The two-element input state to compress.
-    /// @param domainSep Domain separator added to `inputs[0]` before permutation.
     /// @return The compressed output, reduced modulo the BN254 scalar field prime.
-    function compress(uint256[2] calldata inputs, uint256 domainSep) external pure returns (uint256) {
+    function compress(uint256[2] calldata inputs) external pure returns (uint256) {
         if (inputs[0] >= PRIME || inputs[1] >= PRIME) revert NotInPrimefield();
-        return _compress(inputs, domainSep);
+        return _compress(inputs);
     }
 
     /// @notice {compress} without the prime-field input check.
     /// @dev Caller MUST ensure every input is already reduced modulo the BN254 scalar
     /// field prime; unreduced inputs yield an undefined (non-canonical) result.
     /// @param inputs The two-element input state to compress.
-    /// @param domainSep Domain separator added to `inputs[0]` before permutation.
     /// @return The compressed output, reduced modulo the BN254 scalar field prime.
-    function compressUnchecked(uint256[2] calldata inputs, uint256 domainSep) external pure returns (uint256) {
-        return _compress(inputs, domainSep);
+    function compressUnchecked(uint256[2] calldata inputs) external pure returns (uint256) {
+        return _compress(inputs);
     }
 
-    function _compress(uint256[2] calldata inputs, uint256 domainSep) internal pure returns (uint256) {
-        // Add the domain separator
-        uint256[2] memory state = _perm([addmod(inputs[0], domainSep, PRIME), inputs[1]]);
+    function _compress(uint256[2] calldata inputs) internal pure returns (uint256) {
+        uint256[2] memory state = _perm([inputs[0], inputs[1]]);
         // feed forward
         return addmod(state[0], inputs[0], PRIME);
     }

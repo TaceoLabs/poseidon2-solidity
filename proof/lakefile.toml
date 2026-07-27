@@ -1,0 +1,7 @@
+name = "poseidon2-solidity-proof"
+version = "0.1.0"
+defaultTargets = ["Poseidon2NoOverflow"]
+
+[[lean_lib]]
+name = "Poseidon2NoOverflow"
+srcDir = "lean"

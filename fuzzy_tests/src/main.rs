@@ -30,19 +30,24 @@ const PRIME: U256 = uint!(0x30644e72e131a029b85045b68181585d2833e84879b9709143e1
 
 const LIB_T2: Address = address!("0000000000000000000000000000000000001002");
 const LIB_T3: Address = address!("0000000000000000000000000000000000001003");
+const LIB_T4: Address = address!("0000000000000000000000000000000000001004");
 const HARNESS: Address = address!("00000000000000000000000000000000000fa221");
 const CALLER: Address = address!("00000000000000000000000000000000000ca11e");
 
 sol! {
     interface IFuzzHarness {
-        function chainCompressT2(uint256[2] input, uint256 domainSep, uint256 n) external pure returns (uint256[] memory);
-        function chainCompressUncheckedT2(uint256[2] input, uint256 domainSep, uint256 n) external pure returns (uint256[] memory);
+        function chainCompressT2(uint256[2] input, uint256 n) external pure returns (uint256[] memory);
+        function chainCompressUncheckedT2(uint256[2] input, uint256 n) external pure returns (uint256[] memory);
         function chainPermT2(uint256[2] state, uint256 n) external pure returns (uint256[] memory);
         function chainPermUncheckedT2(uint256[2] state, uint256 n) external pure returns (uint256[] memory);
-        function chainCompressT3(uint256[3] input, uint256 domainSep, uint256 n) external pure returns (uint256[] memory);
-        function chainCompressUncheckedT3(uint256[3] input, uint256 domainSep, uint256 n) external pure returns (uint256[] memory);
+        function chainCompressT3(uint256[3] input, uint256 n) external pure returns (uint256[] memory);
+        function chainCompressUncheckedT3(uint256[3] input, uint256 n) external pure returns (uint256[] memory);
         function chainPermT3(uint256[3] state, uint256 n) external pure returns (uint256[] memory);
         function chainPermUncheckedT3(uint256[3] state, uint256 n) external pure returns (uint256[] memory);
+        function chainCompressT4(uint256[4] input, uint256 n) external pure returns (uint256[] memory);
+        function chainCompressUncheckedT4(uint256[4] input, uint256 n) external pure returns (uint256[] memory);
+        function chainPermT4(uint256[4] state, uint256 n) external pure returns (uint256[] memory);
+        function chainPermUncheckedT4(uint256[4] state, uint256 n) external pure returns (uint256[] memory);
     }
 }
 
@@ -76,7 +81,7 @@ struct Scenario {
     checked: bool,
 }
 
-const SCENARIOS: [Scenario; 8] = [
+const SCENARIOS: [Scenario; 12] = [
     Scenario { t: 2, op: Op::Compress, checked: true },
     Scenario { t: 2, op: Op::Compress, checked: false },
     Scenario { t: 2, op: Op::Perm, checked: true },
@@ -85,6 +90,10 @@ const SCENARIOS: [Scenario; 8] = [
     Scenario { t: 3, op: Op::Compress, checked: false },
     Scenario { t: 3, op: Op::Perm, checked: true },
     Scenario { t: 3, op: Op::Perm, checked: false },
+    Scenario { t: 4, op: Op::Compress, checked: true },
+    Scenario { t: 4, op: Op::Compress, checked: false },
+    Scenario { t: 4, op: Op::Perm, checked: true },
+    Scenario { t: 4, op: Op::Perm, checked: false },
 ];
 
 impl Scenario {
@@ -98,6 +107,10 @@ impl Scenario {
             (3, Op::Compress, false) => "compressUncheckedT3",
             (3, Op::Perm, true) => "permT3",
             (3, Op::Perm, false) => "permUncheckedT3",
+            (4, Op::Compress, true) => "compressT4",
+            (4, Op::Compress, false) => "compressUncheckedT4",
+            (4, Op::Perm, true) => "permT4",
+            (4, Op::Perm, false) => "permUncheckedT4",
             _ => unreachable!(),
         }
     }
@@ -109,45 +122,49 @@ impl Scenario {
         }
     }
 
-    fn calldata(&self, input: &[U256], domain_sep: U256, n: U256) -> Vec<u8> {
+    fn calldata(&self, input: &[U256], n: U256) -> Vec<u8> {
         use IFuzzHarness as H;
         match (self.t, self.op, self.checked) {
-            (2, Op::Compress, true) => {
-                H::chainCompressT2Call { input: [input[0], input[1]], domainSep: domain_sep, n }.abi_encode()
-            }
+            (2, Op::Compress, true) => H::chainCompressT2Call { input: [input[0], input[1]], n }.abi_encode(),
             (2, Op::Compress, false) => {
-                H::chainCompressUncheckedT2Call { input: [input[0], input[1]], domainSep: domain_sep, n }.abi_encode()
+                H::chainCompressUncheckedT2Call { input: [input[0], input[1]], n }.abi_encode()
             }
             (2, Op::Perm, true) => H::chainPermT2Call { state: [input[0], input[1]], n }.abi_encode(),
             (2, Op::Perm, false) => H::chainPermUncheckedT2Call { state: [input[0], input[1]], n }.abi_encode(),
-            (3, Op::Compress, true) => H::chainCompressT3Call {
-                input: [input[0], input[1], input[2]],
-                domainSep: domain_sep,
-                n,
+            (3, Op::Compress, true) => {
+                H::chainCompressT3Call { input: [input[0], input[1], input[2]], n }.abi_encode()
             }
-            .abi_encode(),
-            (3, Op::Compress, false) => H::chainCompressUncheckedT3Call {
-                input: [input[0], input[1], input[2]],
-                domainSep: domain_sep,
-                n,
+            (3, Op::Compress, false) => {
+                H::chainCompressUncheckedT3Call { input: [input[0], input[1], input[2]], n }.abi_encode()
             }
-            .abi_encode(),
             (3, Op::Perm, true) => H::chainPermT3Call { state: [input[0], input[1], input[2]], n }.abi_encode(),
             (3, Op::Perm, false) => {
                 H::chainPermUncheckedT3Call { state: [input[0], input[1], input[2]], n }.abi_encode()
+            }
+            (4, Op::Compress, true) => {
+                H::chainCompressT4Call { input: [input[0], input[1], input[2], input[3]], n }.abi_encode()
+            }
+            (4, Op::Compress, false) => {
+                H::chainCompressUncheckedT4Call { input: [input[0], input[1], input[2], input[3]], n }.abi_encode()
+            }
+            (4, Op::Perm, true) => {
+                H::chainPermT4Call { state: [input[0], input[1], input[2], input[3]], n }.abi_encode()
+            }
+            (4, Op::Perm, false) => {
+                H::chainPermUncheckedT4Call { state: [input[0], input[1], input[2], input[3]], n }.abi_encode()
             }
             _ => unreachable!(),
         }
     }
 
     /// Rust reference chain; same chaining rules as the harness.
-    fn expected(&self, input: &[Fr], domain_sep: Fr, n: usize) -> Vec<U256> {
+    fn expected(&self, input: &[Fr], n: usize) -> Vec<U256> {
         let mut outs = Vec::with_capacity(n * self.elems_per_step());
         match (self.t, self.op) {
             (2, Op::Compress) => {
                 let mut st = [input[0], input[1]];
                 for _ in 0..n {
-                    let out = compress_t2(st, domain_sep);
+                    let out = compress_t2(st);
                     outs.push(fr_to_u256(out));
                     st = [out, out];
                 }
@@ -162,7 +179,7 @@ impl Scenario {
             (3, Op::Compress) => {
                 let mut st = [input[0], input[1], input[2]];
                 for _ in 0..n {
-                    let out = compress_t3(st, domain_sep);
+                    let out = compress_t3(st);
                     outs.push(fr_to_u256(out));
                     st = [out, out, out];
                 }
@@ -174,6 +191,21 @@ impl Scenario {
                     outs.extend(st.iter().map(|&f| fr_to_u256(f)));
                 }
             }
+            (4, Op::Compress) => {
+                let mut st = [input[0], input[1], input[2], input[3]];
+                for _ in 0..n {
+                    let out = compress_t4(st);
+                    outs.push(fr_to_u256(out));
+                    st = [out, out, out, out];
+                }
+            }
+            (4, Op::Perm) => {
+                let mut st = [input[0], input[1], input[2], input[3]];
+                for _ in 0..n {
+                    st = taceo_poseidon2::bn254::t4::permutation(&st);
+                    outs.extend(st.iter().map(|&f| fr_to_u256(f)));
+                }
+            }
             _ => unreachable!(),
         }
         outs
@@ -181,14 +213,20 @@ impl Scenario {
 }
 
 /// Mirrors `Poseidon2T2_BN254._compress`.
-fn compress_t2(inputs: [Fr; 2], domain_sep: Fr) -> Fr {
-    let state = taceo_poseidon2::bn254::t2::permutation(&[inputs[0] + domain_sep, inputs[1]]);
+fn compress_t2(inputs: [Fr; 2]) -> Fr {
+    let state = taceo_poseidon2::bn254::t2::permutation(&[inputs[0], inputs[1]]);
     state[0] + inputs[0]
 }
 
 /// Mirrors `Poseidon2T3_BN254._compress`.
-fn compress_t3(inputs: [Fr; 3], domain_sep: Fr) -> Fr {
-    let state = taceo_poseidon2::bn254::t3::permutation(&[inputs[0] + domain_sep, inputs[1], inputs[2]]);
+fn compress_t3(inputs: [Fr; 3]) -> Fr {
+    let state = taceo_poseidon2::bn254::t3::permutation(&[inputs[0], inputs[1], inputs[2]]);
+    state[0] + inputs[0]
+}
+
+/// Mirrors `Poseidon2T4_BN254._compress`.
+fn compress_t4(inputs: [Fr; 4]) -> Fr {
+    let state = taceo_poseidon2::bn254::t4::permutation(&[inputs[0], inputs[1], inputs[2], inputs[3]]);
     state[0] + inputs[0]
 }
 
@@ -269,6 +307,7 @@ fn linked_harness_code(root: &Path) -> Result<Vec<u8>> {
             let addr = match (file.as_str(), name.as_str()) {
                 ("src/Poseidon2T2_BN254.sol", "Poseidon2T2_BN254") => LIB_T2,
                 ("src/Poseidon2T3_BN254.sol", "Poseidon2T3_BN254") => LIB_T3,
+                ("src/Poseidon2T4_BN254.sol", "Poseidon2T4_BN254") => LIB_T4,
                 _ => bail!("unknown link reference {file}:{name}"),
             };
             let addr_hex = hex::encode(addr.as_slice());
@@ -288,9 +327,10 @@ fn linked_harness_code(root: &Path) -> Result<Vec<u8>> {
 fn build_db(root: &Path) -> Result<CacheDB<EmptyDB>> {
     let t2 = library_code(root, "out/Poseidon2T2_BN254.sol/Poseidon2T2_BN254.json")?;
     let t3 = library_code(root, "out/Poseidon2T3_BN254.sol/Poseidon2T3_BN254.json")?;
+    let t4 = library_code(root, "out/Poseidon2T4_BN254.sol/Poseidon2T4_BN254.json")?;
     let harness = linked_harness_code(root)?;
     let mut db = CacheDB::new(EmptyDB::default());
-    for (addr, code) in [(LIB_T2, t2), (LIB_T3, t3), (HARNESS, harness)] {
+    for (addr, code) in [(LIB_T2, t2), (LIB_T3, t3), (LIB_T4, t4), (HARNESS, harness)] {
         db.insert_account_info(addr, AccountInfo::from_bytecode(Bytecode::new_raw(code.into())));
     }
     Ok(db)
@@ -321,26 +361,24 @@ fn run_chain(db: &CacheDB<EmptyDB>, scenario_idx: usize, chain: u64, seed: u64, 
     let sc = SCENARIOS[scenario_idx];
     let mut rng = chain_rng(seed, scenario_idx, chain);
     let input: Vec<U256> = (0..sc.t).map(|_| rand_fe(&mut rng)).collect();
-    let domain_sep = rand_fe(&mut rng);
 
-    let ret = run_call(db, sc.calldata(&input, domain_sep, U256::from(length)))?;
+    let ret = run_call(db, sc.calldata(&input, U256::from(length)))?;
     let got = <Vec<U256>>::abi_decode(&ret).context("decoding harness return data")?;
 
     let input_fr: Vec<Fr> = input.iter().map(|&x| u256_to_fr(x)).collect();
-    let expected = sc.expected(&input_fr, u256_to_fr(domain_sep), length as usize);
+    let expected = sc.expected(&input_fr, length as usize);
     ensure!(got.len() == expected.len(), "output length mismatch: solidity {} vs rust {}", got.len(), expected.len());
 
     for (i, (g, e)) in got.iter().zip(&expected).enumerate() {
         if g != e {
             let per = sc.elems_per_step();
             bail!(
-                "MISMATCH at step {} (element {}):\n  solidity = {:#066x}\n  rust     = {:#066x}\n  initial input = {:?}\n  domainSep = {:#x}",
+                "MISMATCH at step {} (element {}):\n  solidity = {:#066x}\n  rust     = {:#066x}\n  initial input = {:?}",
                 i / per,
                 i % per,
                 g,
                 e,
-                input,
-                domain_sep
+                input
             );
         }
     }
@@ -429,23 +467,36 @@ mod tests {
             uint!(0x0bb61d24daca55eebcb1929a82650f328134334da98ea4f847f760054f4a3033_U256)
         );
 
-        let got = compress_t2(
-            [
-                dec("20457494674368011577698787033167541464070895955057742021881406527394550967066"),
-                dec("21444671219328533920402987889514525745813105369108346788316711824094480574542"),
-            ],
-            Fr::from(0u64),
-        );
+        let got = compress_t2([
+            dec("20457494674368011577698787033167541464070895955057742021881406527394550967066"),
+            dec("21444671219328533920402987889514525745813105369108346788316711824094480574542"),
+        ]);
         assert_eq!(got, dec("2832391002711650597078084662530627544976903336819888740235684339967297026936"));
 
-        let got = compress_t3(
-            [
-                dec("898806166821139162552132088403958488384503106165081617184346559456501738999"),
-                dec("5965168078856614482694323653344381108309427800607037671123008596071823952253"),
-                dec("276435419372390923140774542356582007830246927446975692596430793358221695016"),
-            ],
-            Fr::from(0u64),
-        );
+        let got = compress_t3([
+            dec("898806166821139162552132088403958488384503106165081617184346559456501738999"),
+            dec("5965168078856614482694323653344381108309427800607037671123008596071823952253"),
+            dec("276435419372390923140774542356582007830246927446975692596430793358221695016"),
+        ]);
         assert_eq!(got, dec("1113727409077897104878085522198678951849017209223827130117214728715352275349"));
+
+        let out = taceo_poseidon2::bn254::t4::permutation(&[
+            Fr::from(0u64),
+            Fr::from(1u64),
+            Fr::from(2u64),
+            Fr::from(3u64),
+        ]);
+        assert_eq!(
+            fr_to_u256(out[0]),
+            uint!(0x01bd538c2ee014ed5141b29e9ae240bf8db3fe5b9a38629a9647cf8d76c01737_U256)
+        );
+
+        let got = compress_t4([
+            dec("984638434826781072326755424132850106087537134535547037215571762992188258715"),
+            dec("3437631445512178874044956757555414135117642720286593411444040537437963552166"),
+            dec("2632313501648279494893764902570957563092298872877493247174692944294802639041"),
+            dec("16778519398826163995565032500397037357824449594581267746327139608253580742520"),
+        ]);
+        assert_eq!(got, dec("13965228124958503975421203951945842220982129932391833857581914997066488337370"));
     }
 }

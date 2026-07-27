@@ -18,40 +18,36 @@ library Poseidon2T4_BN254 {
     error NotInPrimefield();
 
     /// @notice Poseidon2 compression function.
-    /// @dev Adds `domainSep` to the first input, runs the permutation, then feeds
-    /// the original first input forward into the result. Reverts with {NotInPrimefield}
-    /// if any input is >= the BN254 scalar field prime.
+    /// @dev Runs the permutation, then feeds the original first input forward into the
+    /// result. Reverts with {NotInPrimefield} if any input is >= the BN254 scalar field prime.
     /// @param inputs The four-element input state to compress.
-    /// @param domainSep Domain separator added to `inputs[0]` before permutation.
     /// @return The compressed output, reduced modulo the BN254 scalar field prime.
-    function compress(uint256[4] calldata inputs, uint256 domainSep) external pure returns (uint256) {
+    function compress(uint256[4] calldata inputs) external pure returns (uint256) {
         if (inputs[0] >= PRIME || inputs[1] >= PRIME || inputs[2] >= PRIME || inputs[3] >= PRIME) {
             revert NotInPrimefield();
         }
-        return _compress(inputs, domainSep);
+        return _compress(inputs);
     }
 
     /// @notice {compress} without the prime-field input check.
     /// @dev Caller MUST ensure every input is already reduced modulo the BN254 scalar
     /// field prime; unreduced inputs yield an undefined (non-canonical) result.
     /// @param inputs The four-element input state to compress.
-    /// @param domainSep Domain separator added to `inputs[0]` before permutation.
     /// @return The compressed output, reduced modulo the BN254 scalar field prime.
-    function compressUnchecked(uint256[4] calldata inputs, uint256 domainSep) external pure returns (uint256) {
-        return _compress(inputs, domainSep);
+    function compressUnchecked(uint256[4] calldata inputs) external pure returns (uint256) {
+        return _compress(inputs);
     }
 
-    function _compress(uint256[4] calldata inputs, uint256 domainSep) internal pure returns (uint256) {
-        // Add the domain separator
-        uint256[4] memory state = _perm([addmod(inputs[0], domainSep, PRIME), inputs[1], inputs[2], inputs[3]]);
+    function _compress(uint256[4] calldata inputs) internal pure returns (uint256) {
+        uint256[4] memory state = _perm([inputs[0], inputs[1], inputs[2], inputs[3]]);
         // feed forward
         return addmod(state[0], inputs[0], PRIME);
     }
 
     /// @notice Raw Poseidon2 permutation over the full BN254 state.
-    /// @dev Shares the exact round logic used by compress(), without the domain
-    /// separator on load or the feed-forward addition on return. Reverts with
-    /// {NotInPrimefield} if any element is >= the BN254 scalar field prime.
+    /// @dev Shares the exact round logic used by compress(), without the feed-forward
+    /// addition on return. Reverts with {NotInPrimefield} if any element is >= the BN254
+    /// scalar field prime.
     /// @param state The four-element state to permute.
     /// @return The permuted state.
     function permutation(uint256[4] memory state) external pure returns (uint256[4] memory) {

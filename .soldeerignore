@@ -4,4 +4,6 @@
 .soldeerignore
 CHANGELOG.md
 cliff.toml
+proof/
 soljson-latest.js
+test/

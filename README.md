@@ -28,9 +28,11 @@ poseidon2-solidity = "0.1.0"
 ```solidity
 import "@taceo/poseidon2/Poseidon2T2_BN254.sol";
 import "@taceo/poseidon2/Poseidon2T3_BN254.sol";
+import "@taceo/poseidon2/Poseidon2T4_BN254.sol";
 
 uint256 h2 = Poseidon2T2_BN254.compress([a, b], domainSep);
 uint256 h3 = Poseidon2T3_BN254.compress([a, b, c], domainSep);
+uint256 h4 = Poseidon2T4_BN254.compress([a, b, c, d], domainSep);
 ```
 
 Add one of the following to your `remappings.txt`, depending on how you installed the library:

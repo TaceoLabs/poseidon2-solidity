@@ -124,7 +124,7 @@ Add one of the following to your `remappings.txt`, depending on how you installe
 @taceo/poseidon2/=lib/poseidon2-solidity/src/
 
 # Soldeer
-@taceo/poseidon2/=dependencies/poseidon2-solidity-0.2.0/src/
+@taceo/poseidon2/=dependencies/poseidon2-0.3.0/src/
 ```
 
 ## Security

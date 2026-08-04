@@ -21,6 +21,11 @@ reverts on overflow, checked or not, so a shift that silently truncated would
 be wrong rather than reverting; the T4 lemmas below prove `t * 4 < uint256Limit`
 at each such shift, which is exactly the condition for `t << 2` to equal the
 exact product `t * 4`.
+
+The T4 implementation spells these same arithmetic shapes in Yul. Yul `add` and
+`shl` wrap rather than revert, so the strict uint256 bounds below are also the
+required proof obligations for the assembly. Yul `addmod` and `mulmod` retain
+their EVM semantics and restore the `< prime` facts used at each reduction point.
 -/
 
 namespace Poseidon2NoOverflow

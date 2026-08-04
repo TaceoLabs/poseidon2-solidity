@@ -98,11 +98,11 @@ library Poseidon2T4_BN254 {
     }
 
     /// @dev Uses lazy reduction: values are only reduced when fed into mulmod/addmod or
-    /// when their bound would otherwise grow past 5 * PRIME. Every unchecked addition below
-    /// keeps its result at most 5 * PRIME < 2^256 (~5.29 * PRIME), so no addition can wrap.
+    /// when their bound would otherwise grow past 5 * PRIME. Every Yul addition below keeps
+    /// its result at most 5 * PRIME < 2^256 (~5.29 * PRIME), so no addition can wrap.
     /// Unlike the t=3 permutation, no addmod is needed at the internal/external round
     /// boundary: the internal linear layer's addmod on `sum` keeps every state element
-    /// below 2 * PRIME, so the following external round's unchecked round-constant add
+    /// below 2 * PRIME, so the following external round's Yul round-constant add
     /// stays at or below 5 * PRIME. Any change to the reduction points must re-establish
     /// this bound.
     /// Precondition: `state[0]`..`state[3]` must already be < PRIME; the bound above

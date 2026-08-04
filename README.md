@@ -35,25 +35,40 @@ uint256 h3 = Poseidon2T3_BN254.compress([a, b, c]);
 uint256 h4 = Poseidon2T4_BN254.compress([a, b, c, d]);
 ```
 
-T4 also provides four-scalar internal overloads. These inline the permutation into
-the consumer and avoid the linked library call:
+Each state size also provides scalar internal overloads. These inline the
+permutation into the consumer and avoid the linked library call:
 
 ```solidity
+uint256 h2Inline = Poseidon2T2_BN254.compress(a, b);
+uint256 h3Inline = Poseidon2T3_BN254.compress(a, b, c);
 uint256 h4Inline = Poseidon2T4_BN254.compress(a, b, c, d);
-uint256 h4InlineUnchecked = Poseidon2T4_BN254.compressUnchecked(a, b, c, d);
-uint256[4] memory state = Poseidon2T4_BN254.permutation(a, b, c, d);
+uint256 h2InlineUnchecked = Poseidon2T2_BN254.compressUnchecked(a, b);
+uint256[3] memory state = Poseidon2T3_BN254.permutation(a, b, c);
 ```
 
 Use the array overload when bytecode size matters, and the scalar overload when
 call gas matters. With Solidity 0.8.24 and this repository's optimizer settings,
-checked T4 compression costs 25,724 gas in the library itself; a minimal external
-consumer's call costs 29,005 gas, while the inline consumer costs 25,782 gas
-(11.1% less). The deployed library is 6,760 runtime bytes. See
-`forge build --sizes` for the exact consumer sizes: the minimal external consumer
-is 337 runtime bytes and the minimal inline consumer is 6,197 bytes, an increase
-of exactly 5,860 bytes. This code is copied into every consumer that uses an
-internal overload and can push a larger contract over the EIP-170 limit of
-24,576 runtime bytes.
+the Yul permutation cores reduce the gas of the checked linked-library calls as
+follows:
+
+| State size | Previous gas | Optimized gas | Savings |
+| --- | ---: | ---: | ---: |
+| T2 | 21,195 | 11,252 | 46.9% |
+| T3 | 29,449 | 14,169 | 51.9% |
+
+The scalar overload saves the library call overhead, at the cost of copying the
+permutation into the consumer:
+
+| State size | Linked call gas | Inline call gas | Gas savings | Library runtime | Minimal linked consumer | Minimal inline consumer | Inline size increase |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| T2 | 14,488 | 11,275 | 22.2% | 5,161 bytes | 337 bytes | 4,671 bytes | 4,334 bytes |
+| T3 | 17,433 | 14,241 | 18.3% | 6,254 bytes | 337 bytes | 5,738 bytes | 5,401 bytes |
+| T4 | 29,005 | 25,782 | 11.1% | 6,760 bytes | 337 bytes | 6,197 bytes | 5,860 bytes |
+
+See `forge test --gas-report` and `forge build --sizes` to reproduce these
+figures. Inlined code is copied into every consumer that uses an internal
+overload and can push a larger contract over the EIP-170 limit of 24,576 runtime
+bytes.
 
 Add one of the following to your `remappings.txt`, depending on how you installed the library:
 ```

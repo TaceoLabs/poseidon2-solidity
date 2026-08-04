@@ -6,8 +6,8 @@ import Lean.Elab.Tactic.Omega
 This file proves the bounds used by `Poseidon2T2_BN254._perm`,
 `Poseidon2T3_BN254._perm`, and `Poseidon2T4_BN254._perm`.  Arithmetic here is
 `Nat` arithmetic: proving that every intermediate result is below
-`uint256Limit` proves that Solidity's `unchecked` arithmetic agrees with
-ordinary (non-wrapping) arithmetic.
+`uint256Limit` proves that the Yul arithmetic agrees with ordinary
+(non-wrapping) arithmetic.
 
 The proof relies on the public precondition of `_perm`: input lanes are below
 `prime`.  `mulmod(_, _, prime)`, `addmod(_, _, prime)`, and `% prime` also
@@ -16,16 +16,15 @@ files is below `prime`.  The lemmas are parametric in such a constant, so
 they apply to every round.
 
 T4's external (M4) linear layer additionally shifts an `addmod` result left
-by 2 bits (`t1 << 2`) outside of any `unchecked` block. Solidity's `<<` never
-reverts on overflow, checked or not, so a shift that silently truncated would
-be wrong rather than reverting; the T4 lemmas below prove `t * 4 < uint256Limit`
-at each such shift, which is exactly the condition for `t << 2` to equal the
-exact product `t * 4`.
+by 2 bits with Yul `shl`. A shift that silently truncated would be wrong; the
+T4 lemmas below prove `t * 4 < uint256Limit` at each such shift, which is
+exactly the condition for `shl(2, t)` to equal the exact product `t * 4`.
 
-The T4 implementation spells these same arithmetic shapes in Yul. Yul `add` and
-`shl` wrap rather than revert, so the strict uint256 bounds below are also the
-required proof obligations for the assembly. Yul `addmod` and `mulmod` retain
-their EVM semantics and restore the `< prime` facts used at each reduction point.
+The three implementations spell these same arithmetic shapes in Yul. Yul `add`
+and `shl` wrap rather than revert, so the strict uint256 bounds below are also
+the required proof obligations for the assembly. Yul `mod`, `addmod`, and
+`mulmod` retain their EVM semantics and restore the `< prime` facts used at
+each reduction point.
 -/
 
 namespace Poseidon2NoOverflow
@@ -38,7 +37,7 @@ def uint256Limit : Nat := 2 ^ 256
 theorem five_prime_lt_uint256 : 5 * prime < uint256Limit := by
   decide
 
-/- `x + c` is used for unchecked round-constant additions whenever the lane
+/- `x + c` is used for Yul round-constant additions whenever the lane
    has a strict `4 * prime` bound. -/
 theorem roundConstantAdd_safe
     {x c : Nat} (hx : x < 4 * prime) (hc : c < prime) :
@@ -77,7 +76,7 @@ theorem t2InternalLayer_safe
 
 /- T3 external matrix block:
      sum = s0 + s1 + s2; si += sum
-   Solidity parses the sum left-associatively, so `s0 + s1` is included. -/
+   The Yul helper nests the sum left-associatively, so `s0 + s1` is included. -/
 theorem t3ExternalLayer_safe
     {s0 s1 s2 : Nat}
     (h0 : s0 < prime) (h1 : s1 < prime) (h2 : s2 < prime) :
@@ -96,7 +95,7 @@ theorem t3ExternalLayer_safe
    prime:
      sum = s0 + s1 + s2
      s0 += sum; s1 += sum; s2 += s2 + sum
-   The last assignment is the largest unchecked expression in either file.
+   The last assignment is the largest Yul addition shape in either file.
    Its strict `5 * prime` bound is what makes the optimization safe. -/
 theorem t3InternalLayer_safe
     {s0 s1 s2 : Nat}
@@ -113,8 +112,8 @@ theorem t3InternalLayer_safe
   have h5 := five_prime_lt_uint256
   omega
 
-/- This packages the four syntactic unchecked-block shapes used throughout
-   the t=2 and t=3 permutations.  Repetition of a block does not weaken its
+/- This packages the four syntactic addition shapes used throughout the t=2
+   and t=3 permutations. Repetition of a block does not weaken its
    result: every S-box `mulmod` (and each explicit remainder) restores its
    hypotheses.  Thus the theorem applies to all 8 external rounds and every
    internal round, independently of the number of repetitions. -/
@@ -137,7 +136,7 @@ theorem allUncheckedBlockShapes_safe
    are dead on entry: both are fully overwritten below, so they carry no
    precondition). `t0 = addmod(s0, s1, PRIME)` and `t1 = addmod(s2, s3, PRIME)`
    are computed from the old state; `t4`, `t5` are the two later `addmod`
-   calls. The Solidity, in order:
+   calls. The Yul helper, in order:
      s1 = s1 + s1 + t1; s3 = s3 + s3 + t0
      t4 = addmod(t1 << 2, s3, PRIME); t5 = addmod(t0 << 2, s1, PRIME)
      s0 = s3 + t5; s2 = s1 + t4
@@ -164,8 +163,8 @@ theorem t4ExternalLayer_safe
 
 /- T4 internal linear layer entry:
      sum = addmod(s0 + s1, s2 + s3, PRIME)
-   The raw `s0 + s1` and `s2 + s3` are computed in an `unchecked` block, so
-   both must stay below `uint256Limit`. Two shapes occur, depending on which
+   The raw `s0 + s1` and `s2 + s3` are computed with Yul `add`, so both
+   must stay below `uint256Limit`. Two shapes occur, depending on which
    round this is:
    - Internal round 0: reached from the last of the 4 initial external
      rounds, where only `s0` has since been round-constant-added and
@@ -200,14 +199,14 @@ theorem t4InternalLayerOutput_safe
   have h5 := five_prime_lt_uint256
   omega
 
-/- Packages the T4-specific unchecked-block shapes (the M4 layer and the
+/- Packages the T4-specific Yul addition shapes (the M4 layer and the
    internal layer's `mulmod _ + sum` output). Round-constant adds reuse
    `roundConstantAdd_safe` directly, since every lane entering one is
    `< 4 * prime` (shown above); the internal layer's raw `s0 + s1` /
    `s2 + s3` reuse `t4InternalLayerEntry_safe` directly, since it already
    concludes `< uint256Limit`. Combined with those two, this covers every
-   unchecked block in `Poseidon2T4_BN254._perm`: the initial linear layer,
-   all 8 external rounds, and all 56 internal rounds. -/
+   potentially wrapping addition in `Poseidon2T4_BN254._perm`: the initial
+   linear layer, all 8 external rounds, and all 56 internal rounds. -/
 theorem t4AllUncheckedBlockShapes_safe
     {s1 s3 t0 t1 t4 t5 d sum k x : Nat}
     (h1 : s1 < prime) (h3 : s3 < prime)

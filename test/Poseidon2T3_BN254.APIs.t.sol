@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.8;
+
+import {Test} from "forge-std/Test.sol";
+import {Poseidon2T3_BN254} from "../src/Poseidon2T3_BN254.sol";
+
+contract T3MinimalExternalConsumer {
+    function compress(uint256[3] calldata x) external pure returns (uint256) {
+        return Poseidon2T3_BN254.compress(x);
+    }
+}
+
+contract T3MinimalInlineConsumer {
+    function compress(uint256 a, uint256 b, uint256 c) external pure returns (uint256) {
+        return Poseidon2T3_BN254.compress(a, b, c);
+    }
+}
+
+contract T3ExternalConsumer {
+    function compress(uint256[3] calldata x) external pure returns (uint256) {
+        return Poseidon2T3_BN254.compress(x);
+    }
+
+    function compressUnchecked(uint256[3] calldata x) external pure returns (uint256) {
+        return Poseidon2T3_BN254.compressUnchecked(x);
+    }
+
+    function permutation(uint256[3] calldata x) external pure returns (uint256[3] memory) {
+        return Poseidon2T3_BN254.permutation(x);
+    }
+
+    function chain(uint256[3] calldata x, uint256 count) external pure returns (uint256 acc) {
+        uint256[3] memory state = x;
+        for (uint256 i; i < count; ++i) {
+            acc = Poseidon2T3_BN254.compress(state);
+            state[0] = acc;
+        }
+    }
+}
+
+contract T3InlineConsumer {
+    function compress(uint256 a, uint256 b, uint256 c) external pure returns (uint256) {
+        return Poseidon2T3_BN254.compress(a, b, c);
+    }
+
+    function compressUnchecked(uint256 a, uint256 b, uint256 c) external pure returns (uint256) {
+        return Poseidon2T3_BN254.compressUnchecked(a, b, c);
+    }
+
+    function permutation(uint256 a, uint256 b, uint256 c) external pure returns (uint256[3] memory) {
+        return Poseidon2T3_BN254.permutation(a, b, c);
+    }
+}
+
+contract Poseidon2T3APITest is Test {
+    uint256 constant P = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001;
+    T3ExternalConsumer externalConsumer;
+    T3InlineConsumer inlineConsumer;
+
+    function setUp() public {
+        externalConsumer = new T3ExternalConsumer();
+        inlineConsumer = new T3InlineConsumer();
+    }
+
+    function testFuzz_allAPIsAgree(uint256 a, uint256 b, uint256 c) public view {
+        a %= P;
+        b %= P;
+        c %= P;
+        uint256[3] memory x = [a, b, c];
+        uint256 checked = externalConsumer.compress(x);
+        assertEq(checked, externalConsumer.compressUnchecked(x));
+        assertEq(checked, inlineConsumer.compress(a, b, c));
+        assertEq(checked, inlineConsumer.compressUnchecked(a, b, c));
+
+        uint256[3] memory extPerm = externalConsumer.permutation(x);
+        uint256[3] memory intPerm = inlineConsumer.permutation(a, b, c);
+        for (uint256 i; i < 3; ++i) {
+            assertEq(extPerm[i], intPerm[i]);
+        }
+        assertEq(checked, addmod(extPerm[0], a, P));
+    }
+
+    function test_internalCheckedRejectsEveryInvalidPosition() public {
+        for (uint256 lane; lane < 3; ++lane) {
+            uint256[3] memory x;
+            x[lane] = P;
+            vm.expectRevert(Poseidon2T3_BN254.NotInPrimefield.selector);
+            inlineConsumer.compress(x[0], x[1], x[2]);
+            vm.expectRevert(Poseidon2T3_BN254.NotInPrimefield.selector);
+            inlineConsumer.permutation(x[0], x[1], x[2]);
+        }
+    }
+
+    function test_gas_externalCheckedCompression() public view {
+        externalConsumer.compress([uint256(1), 2, 3]);
+    }
+
+    function test_gas_externalUncheckedCompression() public view {
+        externalConsumer.compressUnchecked([uint256(1), 2, 3]);
+    }
+
+    function test_gas_inlineCheckedCompression() public view {
+        inlineConsumer.compress(1, 2, 3);
+    }
+
+    function test_gas_externalPermutation() public view {
+        externalConsumer.permutation([uint256(1), 2, 3]);
+    }
+
+    function test_gas_externalChain10() public view {
+        externalConsumer.chain([uint256(1), 2, 3], 10);
+    }
+}
